@@ -1,4 +1,5 @@
 import { SignJWT } from "https://deno.land/x/jose@v4.10.4/jwt/sign.ts";
+import type { KeyLike } from "https://deno.land/x/jose@v4.10.4/types.d.ts";
 import { fromPKCS8 } from "https://deno.land/x/jose@v4.10.4/runtime/asn1.ts";
 
 export type Scopes = string | string[];
@@ -56,15 +57,33 @@ function makeTokenCache(res: TokenResponse): TokenCache {
 }
 
 export default class GToken {
-  private _baseClaims: Record<string, unknown>;
+  private _baseClaims: Record<string, unknown> = { aud: TOKEN_URL };
   private _signer: ReturnType<typeof fromPKCS8>;
   private _cachedToken: Promise<TokenCache> = Promise.resolve([0, ""]);
 
-  constructor(creds: Credentials, opts: GTokenOptions) {
-    this._baseClaims = {
-      aud: TOKEN_URL,
-      iss: creds.client_email,
-    };
+  constructor(creds: Credentials, opts: GTokenOptions);
+  constructor(
+    clientEmail: string,
+    key: KeyLike | Promise<KeyLike>,
+    opts: GTokenOptions,
+  );
+  constructor(
+    ...args: [Credentials, GTokenOptions] | [
+      string,
+      KeyLike | Promise<KeyLike>,
+      GTokenOptions,
+    ]
+  ) {
+    let opts: GTokenOptions;
+    if (typeof args[0] === "string") {
+      this._baseClaims.iss = args[0];
+      this._signer = args[1] as KeyLike;
+      opts = args[2] as GTokenOptions;
+    } else {
+      this._baseClaims.iss = args[0].client_email;
+      this._signer = fromPKCS8(args[0].private_key, "RS256");
+      opts = args[1] as GTokenOptions;
+    }
 
     if (isScopes(opts)) {
       this._baseClaims.scope = Array.isArray(opts.scopes)
@@ -73,8 +92,6 @@ export default class GToken {
     } else {
       this._baseClaims.target_audience = opts.target_audience || undefined;
     }
-
-    this._signer = fromPKCS8(creds.private_key, "RS256");
   }
 
   public async token(): Promise<string> {
