@@ -28,7 +28,7 @@ export default class GClient {
   }
 
   public async sign(
-    input: RequestInfo,
+    input: RequestInfo | URL,
     init?: RequestInit,
   ) {
     const req = new Request(input, init);
@@ -37,7 +37,7 @@ export default class GClient {
   }
 
   public async fetch(
-    input: RequestInfo,
+    input: RequestInfo | URL,
     init?: RequestInit,
   ): Promise<Response> {
     return fetch(await this.sign(input, init));
