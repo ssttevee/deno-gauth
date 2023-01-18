@@ -23,12 +23,23 @@ export default class GClient {
     this._token = credentials;
   }
 
+  public token() {
+    return this._token.token();
+  }
+
+  public async sign(
+    input: RequestInfo,
+    init?: RequestInit,
+  ) {
+    const req = new Request(input, init);
+    req.headers.set("Authorization", `Bearer ${await this.token()}`);
+    return req;
+  }
+
   public async fetch(
     input: RequestInfo,
     init?: RequestInit,
   ): Promise<Response> {
-    const req = new Request(input, init);
-    req.headers.set("Authorization", `Bearer ${await this._token.token()}`);
-    return fetch(req);
+    return fetch(await this.sign(input, init));
   }
 }
